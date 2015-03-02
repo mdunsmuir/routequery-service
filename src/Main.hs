@@ -1,9 +1,20 @@
 import Control.Applicative
 import Data.Char (isSpace)
-import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as B
 import Network.HTTP
 import Text.ProtocolBuffers.WireMessage
-import Com.Google.Transit.Realtime
+import Com.Google.Transit.Realtime.FeedMessage (FeedMessage)
+
+main = do
+  --message <- B.readFile "sample_message.pb"
+  key <- loadKey
+  http <- simpleHTTP (sampleRequest key)
+  message <- B.pack <$> getResponseBody http
+  let getted = messageGet message :: Either String (FeedMessage, B.ByteString)
+  case getted of
+    Left error -> putStrLn error
+    Right (update, _) -> putStrLn $ show update
+ 
 
 sampleRequest key
   = getRequest $ "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/1.pb?key=" ++ key
@@ -15,10 +26,10 @@ loadKey = trim <$> readFile "key.txt"
     trim = f . f
        where f = reverse . dropWhile isSpace
 
+{-
 main = do
   key <- loadKey
   http <- simpleHTTP (sampleRequest key)
-  code <- getResponseCode http
-  putStrLn $ show code
-  --response <- B.pack <$> getResponseBody http
-  --putStrLn $ show response
+  response <- getResponseBody http
+  writeFile "sample_message.pb" response
+-}

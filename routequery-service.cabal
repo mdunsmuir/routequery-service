@@ -59,7 +59,9 @@ executable routequery-service
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.7 && <4.8, protocol-buffers >=2.0.17 && <2.1,
                        protocol-buffers-descriptor >=2.0.17 && <2.1, HTTP >= 4000.2.19 && <4000.3,
-                       bytestring >=0.10.4 && <0.11
+                       bytestring >=0.10.4 && <0.11, haskelldb >=2.2.4 && <2.3,
+                       haskelldb-hdbc >= 2.2.2 && <2.3,
+                       HDBC-mysql == 0.6.6.2
   
   -- Directories containing source files.
   hs-source-dirs:      src

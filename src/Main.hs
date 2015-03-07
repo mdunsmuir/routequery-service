@@ -1,9 +1,12 @@
 import Control.Applicative
 import Data.Char (isSpace)
+import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as B
 import Network.HTTP
 import Text.ProtocolBuffers.WireMessage
 import Com.Google.Transit.Realtime.FeedMessage (FeedMessage)
+
+import RoutequeryService.GTFS
 
 main = do
   --message <- B.readFile "sample_message.pb"
@@ -13,7 +16,7 @@ main = do
   let getted = messageGet message :: Either String (FeedMessage, B.ByteString)
   case getted of
     Left error -> putStrLn error
-    Right (update, _) -> putStrLn $ show update
+    Right (update, _) -> B.writeFile "output.json" (encode update)
  
 
 sampleRequest key

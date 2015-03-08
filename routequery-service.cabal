@@ -46,9 +46,9 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 
-executable routequery-service
+executable gtfs-realtime-historian
   -- .hs or .lhs file containing the Main module.
-  main-is:             Main.hs
+  main-is:             Historian.hs
   
   -- Modules included in this executable, other than Main.
   -- other-modules:       
@@ -60,7 +60,8 @@ executable routequery-service
   build-depends:       base >=4.7 && <4.8, protocol-buffers >=2.0.17 && <2.1,
                        protocol-buffers-descriptor >=2.0.17 && <2.1, HTTP >= 4000.2.19 && <4000.3,
                        bytestring >=0.10.4 && <0.11, aeson >=0.8.0.2 && <0.9,
-                       containers >=0.5.5.1 && <0.6, template-haskell
+                       containers >=0.5.5.1 && <0.6, template-haskell, acid-state,
+                       safecopy, cereal, mtl
   
   -- Directories containing source files.
   hs-source-dirs:      src

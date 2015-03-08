@@ -20,10 +20,13 @@
 module RoutequeryService.GTFSRealtime () where
 
 import Control.Monad
+import Data.Serialize
+import Data.SafeCopy
 import qualified Data.Sequence as S
 import qualified Data.Foldable as F
 import Data.Char
 import Data.Word
+import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as B
 import qualified Text.ProtocolBuffers.Basic as PB
 import qualified Text.ProtocolBuffers.Extensions as PE
@@ -57,6 +60,8 @@ import Com.Google.Transit.Realtime.VehiclePosition.CongestionLevel
 import Com.Google.Transit.Realtime.VehiclePosition.OccupancyStatus
 import Com.Google.Transit.Realtime.VehiclePosition.VehicleStopStatus
 
+-- * Aeson Instances
+
 instance ToJSON a => ToJSON (S.Seq a) where
   toJSON = toJSON . map toJSON . F.toList
 
@@ -69,4 +74,13 @@ instance ToJSON PE.ExtField where
 instance ToJSON PB.ByteString where
   toJSON = toJSON . map (toEnum . fromEnum :: Word8 -> Char) . B.unpack
 
-$dec
+$aesonDec
+
+-- * Safecopy Instances for Acid
+
+instance SafeCopy PE.ExtField where
+  putCopy = (\_ -> contain $ return ())
+  getCopy = contain $ return $ PE.ExtField M.empty
+
+$(deriveSafeCopy 0 'base ''PB.Utf8)
+$safeCopyDec

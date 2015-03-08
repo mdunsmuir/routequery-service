@@ -15,11 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE TemplateHaskell #-}
+
 module RoutequeryService.GTFSRealtime.TH where
 
 import Control.Monad
 import Language.Haskell.TH
 import Data.Aeson.TH
+import Data.SafeCopy
 
 typeNames = map mkName $ [
   "Alert", "Cause", "Effect",
@@ -36,5 +39,8 @@ typeNames = map mkName $ [
   "VehicleDescriptor",
   "VehiclePosition", "CongestionLevel", "OccupancyStatus", "VehicleStopStatus"]
   
+multiDec :: (Name -> Q [Dec]) -> Q [Dec]
+multiDec = liftM concat . forM typeNames
 
-dec = liftM concat $ forM typeNames (deriveToJSON defaultOptions)
+aesonDec = multiDec $ deriveToJSON defaultOptions
+safeCopyDec = multiDec $ deriveSafeCopy 0 'base

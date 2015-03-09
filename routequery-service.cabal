@@ -61,7 +61,7 @@ executable gtfs-realtime-historian
                        protocol-buffers-descriptor >=2.0.17 && <2.1, HTTP >= 4000.2.19 && <4000.3,
                        bytestring >=0.10.4 && <0.11, aeson >=0.8.0.2 && <0.9,
                        containers >=0.5.5.1 && <0.6, template-haskell, acid-state,
-                       safecopy, cereal, mtl
+                       safecopy, cereal, mtl, cassava
   
   -- Directories containing source files.
   hs-source-dirs:      src

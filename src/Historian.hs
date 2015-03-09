@@ -26,6 +26,7 @@ import Data.Acid
 import Data.Typeable
 import Data.Char (isSpace)
 import qualified Data.Foldable as F
+import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.ByteString.Lazy.Char8 as B
 import Network.HTTP
@@ -36,22 +37,22 @@ import RoutequeryService.GTFSRealtime
 import Com.Google.Transit.Realtime.FeedEntity
 import Com.Google.Transit.Realtime.TripUpdate
 
-data TripUpdateMap = TripUpdateMap (M.Map Integer [TripUpdate]) deriving Typeable
+data TripUpdateMap = TripUpdateMap (M.Map Integer (S.Set TripUpdate)) deriving Typeable
 
 insertTripUpdate :: TripUpdate -> Update TripUpdateMap ()
 insertTripUpdate tu@(TripUpdate _ _ _ (Just timestamp) _ _) = do
   TripUpdateMap map <- get
-  let map' = M.insertWith (++) timestamp' [tu] map
+  let map' = M.insertWith S.union timestamp' (S.singleton tu) map
   put $ TripUpdateMap map'
   where timestamp' = toInteger timestamp
 insertTripUpdate _ = return ()
 
-tripUpdatesForTimestamp :: Integer -> Query TripUpdateMap [TripUpdate]
+tripUpdatesForTimestamp :: Integer -> Query TripUpdateMap (S.Set TripUpdate)
 tripUpdatesForTimestamp ts = do
   TripUpdateMap map <- ask
-  return $ M.findWithDefault [] ts map
+  return $ M.findWithDefault S.empty ts map
 
-getMap :: Query TripUpdateMap (M.Map Integer [TripUpdate])
+getMap :: Query TripUpdateMap (M.Map Integer (S.Set TripUpdate))
 getMap = do
   TripUpdateMap map <- ask
   return map
@@ -85,6 +86,6 @@ storeUpdates (FeedMessage _ entities _) = do
   F.forM_ updates $ \tripUpdate -> case tripUpdate of
                                      (Just tripUpdate) -> update acid $ InsertTripUpdate tripUpdate
                                      Nothing -> return ()
-  updates <- query acid $ TripUpdatesForTimestamp 1425790759
+  updates <- query acid $ TripUpdatesForTimestamp 1425842139
   B.putStrLn $ encode updates
   

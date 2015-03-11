@@ -15,90 +15,154 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE ScopedTypeVariables,
+{-# LANGUAGE TemplateHaskell,
+             ScopedTypeVariables,
              OverloadedStrings #-}
 
 -- | Types representing various GTFS data
-module RoutequeryService.GTFS.Types where
+module RoutequeryService.GTFS.Types (
+  WheelchairBoarding(..),
+  Agency(..),
+  Stop(..),
+  LocationType(..),
+  Route(..),
+  RouteType(..),
+  Trip(..),
+  TripDirection(..),
+  BikesAllowed(..),
+  StopTime(..),
+  GTFSTime(..),
+  PickupType(..),
+  DropoffType(..),
+  TimepointInfo(..)
+) where
 
-import Control.Applicative
+import Control.Applicative (empty)
 import Data.Csv
-import Text.Read
-import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as BS
-import qualified Data.Vector as V
 import qualified Data.Text as T
+import Text.Read
+import Data.List.Split (splitOn)
+
+import RoutequeryService.GTFS.Types.TH
 
 -- * Types
 
--- | Type representing an agency (from agency.txt)
-data Agency = Agency {
-  agencyId :: !(Maybe T.Text),
-  agencyName :: !T.Text,
-  agencyUrl :: !T.Text,
-  agencyTimezone :: !T.Text,
-  agencyLanguage :: !(Maybe T.Text),
-  agencyPhone :: !(Maybe T.Text),
-  agencyFareUrl :: !(Maybe T.Text) } deriving Show
+-- Common Enums
 
-instance FromNamedRecord Agency where
-  parseNamedRecord m =
-    Agency <$>
-    m .: "agency_id" <*>
-    m .: "agency_name" <*>
-    m .: "agency_url" <*>
-    m .: "agency_timezone" <*>
-    m .: "agency_lang" <*>
-    m .: "agency_phone" <*>
-    m .: "agency_fare_url"
+$(makeEnum "WheelchairBoarding"
+    ["WheelchairUnknown", "WheelchairAvailable", "WheelchairNotAvailable"])
 
--- | Type representing a stop (from stops.txt)
-data Stop = Stop {
-  stopId :: !T.Text,
-  stopCode :: !(Maybe T.Text),
-  stopName :: !T.Text,
-  stopDescription :: !(Maybe T.Text),
-  stopLatitude :: !Double,
-  stopLongitude :: !Double,
-  stopZoneId :: !(Maybe T.Text),
-  stopUrl :: !(Maybe T.Text),
-  stoplocationType :: !(Maybe LocationType),
-  stopParentStation :: !(Maybe T.Text),
-  stopTimezone :: !(Maybe T.Text),
-  stopWheelchairBoarding :: !(Maybe Bool) } deriving Show
+-- Agency
 
-instance FromNamedRecord Stop where
-  parseNamedRecord m =
-    Stop <$>
-    m .: "stop_id" <*>
-    m .: "stop_code" <*>
-    m .: "stop_name" <*>
-    m .: "stop_desc" <*>
-    m .: "stop_lat" <*>
-    m .: "stop_lon" <*>
-    m .: "zone_id" <*>
-    m .: "stop_url" <*>
-    m .: "location_type" <*>
-    m .: "parent_station" <*>
-    m .: "stop_timezone" <*>
-    m .: "wheelchair_boarding"
+$(makeGTFSType "Agency" [
+  Optional "agency_id" ''T.Text,
+  Required "agency_name" ''T.Text,
+  Required "agency_url" ''T.Text,
+  Required "agency_timezone" ''T.Text,
+  Optional "agency_lang" ''T.Text,
+  Optional "agency_phone" ''T.Text,
+  Optional "agency_fare_url" ''T.Text])
 
-enumFromField :: forall a. (Enum a, Bounded a) => BS.ByteString -> Parser a
-enumFromField s
-  | readValue < 0 = empty
-  | readValue > fromEnum (maxBound :: a) = empty
-  | otherwise = return $ toEnum readValue
-  where 
-    readValue = case readMaybe $ map (toEnum . fromEnum) $ BS.unpack s of
-      Just n -> n
-      Nothing -> (-1)
-  
-data LocationType = StopLocation | StationLocation deriving (Enum, Bounded, Show)
+-- Stop
 
-instance FromField LocationType where
-  parseField = enumFromField 
+$(makeEnum "LocationType" ["StopLocation", "StationLocation"])
 
-instance FromField Bool where
-  parseField "0" = return False
-  parseField "1" = return True
-  parseField _ = empty
+$(makeGTFSType "Stop" [
+  Required "stop_id" ''T.Text,
+  Optional "stop_code" ''T.Text,
+  Required "stop_name" ''T.Text,
+  Optional "stop_desc" ''T.Text,
+  Required "stop_lat" ''Double,
+  Required "stop_lon" ''Double,
+  Optional "zone_id" ''T.Text,
+  Optional "stop_url" ''T.Text,
+  Optional "location_type" ''LocationType,
+  Optional "parent_station" ''T.Text,
+  Optional "stop_timezone" ''T.Text,
+  Optional "wheelchair_boarding" ''WheelchairBoarding])
+
+-- Route
+
+$(makeEnum "RouteType"
+  ["LightRail", "Subway", "Rail", "Bus", 
+   "Ferry", "CableCar", "Gondola", "Funicular"])
+
+$(makeGTFSType "Route" [
+  Required "route_id" ''T.Text,
+  Optional "agency_id" ''T.Text,
+  Required "route_short_name" ''T.Text,
+  Required "route_long_name" ''T.Text,
+  Optional "route_desc" ''T.Text,
+  Required "route_type" ''RouteType,
+  Optional "route_url" ''T.Text,
+  Optional "route_color" ''T.Text,
+  Optional "route_text_color" ''T.Text ])
+
+-- Trip
+
+$(makeEnum "TripDirection" ["ThisDirection", "ThatDirection"])
+$(makeEnum "BikesAllowed" ["BikesUnknown", "BikesYes", "BikesNo"])
+
+$(makeGTFSType "Trip" [
+  Required "route_id" ''T.Text,
+  Required "service_id" ''T.Text,
+  Required "trip_id" ''T.Text,
+  Optional "trip_headsign" ''T.Text,
+  Optional "trip_short_name" ''T.Text,
+  Optional "direction_id" ''TripDirection,
+  Optional "block_id" ''T.Text,
+  Optional "shape_id" ''T.Text,
+  Optional "wheelchair_accessible" ''WheelchairBoarding,
+  Optional "bikes_allowed" ''BikesAllowed])
+
+-- StopTime
+
+data GTFSTime = GTFSTime {
+                  hour :: Int,
+                  minute :: Int,
+                  second :: Int } deriving (Eq, Ord, Show)
+
+instance FromField GTFSTime where
+  parseField f
+    | length splitF /= 3 = empty
+    | otherwise = case maybeTime of
+                    Just t -> return t
+                    Nothing -> empty
+    where
+      f' = map (toEnum . fromEnum) $ BS.unpack f :: [Char]
+      splitF = splitOn ":" f'
+      maybeTime :: Maybe GTFSTime
+      maybeTime = do
+        h <- readMaybe $ splitF !! 0
+        m <- readMaybe $ splitF !! 1 
+        s <- readMaybe $ splitF !! 2
+        return $ GTFSTime h m s
+
+$(makeEnum "PickupType" [
+  "RegularPickup",
+  "NoPickup",
+  "PhoneAgencyPickup",
+  "CoordinateWithDriverPickup"])
+
+$(makeEnum "DropoffType" [
+  "RegularDropoff",
+  "NoDropoff",
+  "PhoneAgencyDropoff",
+  "CoordinateWithDriverDropoff"])
+
+$(makeEnum "TimepointInfo" [
+  "ApproximateTimes",
+  "ExactTimes"])
+   
+$(makeGTFSType "StopTime" [
+  Required "trip_id" ''T.Text,
+  Optional "arrival_time" ''GTFSTime,
+  Required "departure_time" ''GTFSTime,
+  Required "stop_id" ''T.Text,
+  Required "stop_sequence" ''Int,
+  Optional "stop_headsign" ''T.Text,
+  Optional "pickup_type" ''PickupType,
+  Optional "dropoff_type" ''DropoffType,
+  Optional "shape_dist_traveled" ''Double,
+  Optional "timepoint" ''TimepointInfo])
